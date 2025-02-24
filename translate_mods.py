@@ -2,6 +2,7 @@ import os
 import zipfile
 import json
 import pickle
+import tempfile
 from pathlib import Path
 from json_repair import loads
 from openai import OpenAI
@@ -14,6 +15,29 @@ load_dotenv()
 # OpenAI クライアントの初期化
 client = OpenAI()
 
+def extract_nested_jars(jar_path, temp_dir):
+    """
+    JARファイル内のネストされたJARファイルを抽出する
+    戻り値: 抽出されたJARファイルのパスのリスト
+    """
+    nested_jars = []
+    
+    try:
+        with zipfile.ZipFile(jar_path, 'r') as jar:
+            # META-INF/jars/ 内のJARファイルを探す
+            jar_files = [f for f in jar.namelist() if f.startswith('META-INF/jars/') and f.endswith('.jar')]
+            
+            for jar_file in jar_files:
+                # 一時ディレクトリに抽出
+                jar.extract(jar_file, temp_dir)
+                extracted_path = os.path.join(temp_dir, jar_file)
+                nested_jars.append(extracted_path)
+                
+    except Exception as e:
+        print(f"警告: ネストされたJARファイルの抽出中にエラーが発生しました: {str(e)}")
+    
+    return nested_jars
+
 def check_mod_language(jar_path):
     """
     MODの言語ファイルをチェックする
@@ -21,6 +45,33 @@ def check_mod_language(jar_path):
         0: 日本語化済み
         1: 英語のみ
         2: その他
+    """
+    try:
+        # 一時ディレクトリを作成
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # メインのJARファイルをチェック
+            result = check_jar_language(jar_path)
+            if result != 2:  # 日本語化済みまたは英語のみの場合
+                return result
+                
+            # ネストされたJARファイルを抽出してチェック
+            nested_jars = extract_nested_jars(jar_path, temp_dir)
+            for nested_jar in nested_jars:
+                result = check_jar_language(nested_jar)
+                if result == 1:  # 英語のみのファイルが見つかった
+                    return 1
+                elif result == 0:  # 日本語化済みのファイルが見つかった
+                    return 0
+            
+            return 2  # すべてのチェックで該当なし
+            
+    except Exception as e:
+        print(f"エラー: {os.path.basename(jar_path)} の処理中にエラーが発生しました: {str(e)}")
+        return 2
+
+def check_jar_language(jar_path):
+    """
+    単一のJARファイルの言語ファイルをチェックする
     """
     try:
         with zipfile.ZipFile(jar_path, 'r') as jar:
@@ -111,8 +162,28 @@ def create_resource_pack(jar_path, translated_data, mod_name, resource_pack_path
         # 言語ファイル
         # MODのアセットパスを取得
         with zipfile.ZipFile(jar_path, 'r') as jar:
-            en_file = next(f for f in jar.namelist() if f.endswith('en_us.json'))
-            asset_path = os.path.dirname(os.path.dirname(en_file))
+            # メインのJARファイルとネストされたJARファイルの両方をチェック
+            with tempfile.TemporaryDirectory() as temp_dir:
+                en_file = None
+                
+                # メインのJARファイルをチェック
+                en_files = [f for f in jar.namelist() if f.endswith('en_us.json')]
+                if en_files:
+                    en_file = en_files[0]
+                else:
+                    # ネストされたJARファイルをチェック
+                    nested_jars = extract_nested_jars(jar_path, temp_dir)
+                    for nested_jar in nested_jars:
+                        with zipfile.ZipFile(nested_jar, 'r') as nested:
+                            en_files = [f for f in nested.namelist() if f.endswith('en_us.json')]
+                            if en_files:
+                                en_file = en_files[0]
+                                break
+                
+                if not en_file:
+                    raise Exception("英語ファイルが見つかりません")
+                    
+                asset_path = os.path.dirname(os.path.dirname(en_file))
             
         # 日本語ファイルのパス
         jp_path = f"{asset_path}/lang/ja_jp.json"
@@ -261,14 +332,32 @@ def main(modpack_name="Our Story Earth"):
             mod_name = os.path.splitext(file)[0]
             
             try:
-                with zipfile.ZipFile(jar_path, 'r') as jar:
-                    en_files = [f for f in jar.namelist() if f.endswith('en_us.json')]
-                    if not en_files:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    en_file_content = None
+                    en_file_path = None
+                    
+                    # メインのJARファイルをチェック
+                    with zipfile.ZipFile(jar_path, 'r') as jar:
+                        en_files = [f for f in jar.namelist() if f.endswith('en_us.json')]
+                        if en_files:
+                            en_file_content = jar.read(en_files[0]).decode('utf-8')
+                            en_file_path = en_files[0]
+                        else:
+                            # ネストされたJARファイルをチェック
+                            nested_jars = extract_nested_jars(jar_path, temp_dir)
+                            for nested_jar in nested_jars:
+                                with zipfile.ZipFile(nested_jar, 'r') as nested:
+                                    en_files = [f for f in nested.namelist() if f.endswith('en_us.json')]
+                                    if en_files:
+                                        en_file_content = nested.read(en_files[0]).decode('utf-8')
+                                        en_file_path = en_files[0]
+                                        break
+                    
+                    if not en_file_content:
                         print(f"警告: {file} に英語ファイルが見つかりません")
                         continue
                     
-                    en_file_content = jar.read(en_files[0]).decode('utf-8')
-                    print(f"デバッグ - {file} の英語ファイルパス: {en_files[0]}")
+                    print(f"デバッグ - {file} の英語ファイルパス: {en_file_path}")
                     print(f"デバッグ - ファイル内容の一部: {en_file_content[:200]}...")
                     
                     en_data = loads(en_file_content)
@@ -313,5 +402,6 @@ def main(modpack_name="Our Story Earth"):
             print(f"\nバッチを作成しました (ID: {batch_result.id})")
             print("次回の実行時に翻訳結果を確認します")
 
+
 if __name__ == "__main__":
-    main("Our Story Earth")
+    main("Our Story Authentic")
