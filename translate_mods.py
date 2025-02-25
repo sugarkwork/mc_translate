@@ -404,4 +404,4 @@ def main(modpack_name="Our Story Earth"):
 
 
 if __name__ == "__main__":
-    main("Our Story Authentic")
+    main("Better MC [FORGE] BMC4 (1)")
