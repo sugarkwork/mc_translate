@@ -15,6 +15,9 @@ load_dotenv()
 # OpenAI クライアントの初期化
 client = OpenAI()
 
+resource_packs = []
+
+
 def extract_nested_jars(jar_path, temp_dir):
     """
     JARファイル内のネストされたJARファイルを抽出する
@@ -193,6 +196,9 @@ def create_resource_pack(jar_path, translated_data, mod_name, resource_pack_path
         
     shutil.copy(zip_path, os.path.join(cache_dir, f"{mod_name}_jp.zip"))
     
+    global resource_packs
+    resource_packs.append(zip_path)
+
     print(f"リソースパック作成完了: {zip_path}")
 
 def process_batch_results(batch_results, jar_path, mod_name, resource_pack_path, cache_dir):
@@ -223,9 +229,13 @@ def process_batch_results(batch_results, jar_path, mod_name, resource_pack_path,
 def main(modpack_name="Our Story Earth"):
     # パスの設定
     userprofile = os.environ.get("USERPROFILE")
-    mods_path = os.path.join(userprofile, r"curseforge\minecraft\Instances", modpack_name, "mods")
-    resource_pack_path = os.path.join(userprofile, r"curseforge\minecraft\Instances", modpack_name, "resourcepacks")
+    instance_path = os.path.join(userprofile, r"curseforge\minecraft\Instances", modpack_name)
+    mods_path = os.path.join(instance_path, "mods")
+    resource_pack_path = os.path.join(instance_path, "resourcepacks")
     
+    global resource_packs
+    resource_packs = []
+
     # キャッシュの読み込み
     mod_lang_cache_file = "mod_lang_cache.pkl"
     batch_id_file = "batch_id.txt"
@@ -245,6 +255,7 @@ def main(modpack_name="Our Story Earth"):
         os.mkdir(cache_dir)
     
     
+    
     # MODの言語状態をチェック
     print("=== MODの言語状態をチェック中 ===")
     en_mods = []
@@ -257,12 +268,14 @@ def main(modpack_name="Our Story Earth"):
         zip_path = os.path.join(resource_pack_path, f"{mod_name}_jp.zip")
         
         if os.path.exists(zip_path):
+            resource_packs.append(zip_path)
             continue
             
         cache_name = os.path.join(cache_dir, f"{mod_name}_jp.zip")
         if os.path.exists(cache_name):
             shutil.copy(cache_name, zip_path)
             print(f"リソースパックのキャッシュを利用: {zip_path}")
+            resource_packs.append(zip_path)
             continue
         
         if file in cache:
@@ -401,7 +414,24 @@ def main(modpack_name="Our Story Earth"):
             
             print(f"\nバッチを作成しました (ID: {batch_result.id})")
             print("次回の実行時に翻訳結果を確認します")
-
+    
+    # all in one resourcepack
+    all_in_one_pack_path = os.path.join(resource_pack_path, f"all_in_one_{modpack_name}_jp.zip")
+    pack_mcmeta = {
+        "pack": {
+            "description": f"{modpack_name} Japanese Translation",
+            "pack_format": 34
+        }
+    }
+    with zipfile.ZipFile(all_in_one_pack_path, 'w', zipfile.ZIP_DEFLATED) as zfout:
+        zfout.writestr('pack.mcmeta', json.dumps(pack_mcmeta, indent=4, ensure_ascii=False))
+        for i, pack in enumerate(resource_packs):
+            with zipfile.ZipFile(pack, 'r') as zfin:
+                for file in zfin.namelist():
+                    if file.endswith(".json"):
+                        data = zfin.read(file).decode('utf-8')
+                        zfout.writestr(file, data)
+                        print(f"Added {file} to all_in_one pack")
 
 if __name__ == "__main__":
-    main("Better MC [FORGE] BMC4 (1)")
+    main("Prodigium Reforged (Terraria Pack)")
