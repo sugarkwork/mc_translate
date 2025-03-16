@@ -87,18 +87,60 @@ def check_jar_language(jar_path):
             
             # 日本語ファイルの確認
             jp_files = [f for f in lang_paths if f.endswith('ja_jp.json')]
-            if jp_files:
-                result = {}
-                for jp_file in jp_files:
-                    with jar.open(jp_file) as f:
-                        data = f.read().decode('utf-8')
-                        result[jp_file] = data
-                mod_jp_cache[jar_path] = result
-                return 0  # 日本語化済み
             
             # 英語ファイルの確認
             en_files = [f for f in lang_paths if f.endswith('en_us.json')]
-            if en_files:
+            
+            if jp_files and en_files:
+                # 日本語ファイルと英語ファイルの両方が存在する場合、内容を比較
+                result = {}
+                is_actually_japanese = False
+                
+                for jp_file in jp_files:
+                    # 対応する英語ファイルのパスを取得
+                    en_file = jp_file.replace('ja_jp.json', 'en_us.json')
+                    if en_file in en_files:
+                        # 両方のファイルの内容を読み込む
+                        with jar.open(jp_file) as f_jp:
+                            jp_data = f_jp.read().decode('utf-8')
+                        
+                        with jar.open(en_file) as f_en:
+                            en_data = f_en.read().decode('utf-8')
+                        
+                        # 内容が同じかどうかをチェック
+                        if jp_data != en_data:
+                            # 日本語の文字が含まれているかチェック（ひらがな、カタカナ、漢字）
+                            if any(ord(c) > 0x3000 for c in jp_data):
+                                is_actually_japanese = True
+                                result[jp_file] = jp_data
+                
+                if is_actually_japanese:
+                    mod_jp_cache[jar_path] = result
+                    return 0  # 実際に日本語化済み
+                else:
+                    # ja_jp.jsonは存在するが、実際には日本語化されていない
+                    return 1  # 英語のみと同様に扱う
+            
+            elif jp_files:
+                # 日本語ファイルのみ存在する場合（稀なケース）
+                result = {}
+                is_actually_japanese = False
+                
+                for jp_file in jp_files:
+                    with jar.open(jp_file) as f:
+                        jp_data = f.read().decode('utf-8')
+                        # 日本語の文字が含まれているかチェック
+                        if any(ord(c) > 0x3000 for c in jp_data):
+                            is_actually_japanese = True
+                            result[jp_file] = jp_data
+                
+                if is_actually_japanese:
+                    mod_jp_cache[jar_path] = result
+                    return 0  # 実際に日本語化済み
+                else:
+                    return 1  # 英語のみと同様に扱う
+            
+            elif en_files:
                 return 1  # 英語のみ
             
             return 2  # その他
@@ -419,6 +461,8 @@ def main(modpack_name="Our Story Earth"):
             "pack_format": 34
         }
     }
+
+    all_in_one_count = 0
     with zipfile.ZipFile(all_in_one_pack_path, 'w', zipfile.ZIP_DEFLATED) as zfout:
         zfout.writestr('pack.mcmeta', json.dumps(pack_mcmeta, indent=4, ensure_ascii=False))
         for i, pack in enumerate(resource_packs):
@@ -427,11 +471,13 @@ def main(modpack_name="Our Story Earth"):
                     if file.endswith(".json"):
                         data = zfin.read(file).decode('utf-8')
                         zfout.writestr(file, data)
-                        print(f"Added {file} to all_in_one pack (1)")
+                        all_in_one_count += 1
         for mod_name, mod_langs in mod_jp_cache.items():
             for lang_file, data in mod_langs.items():
                 zfout.writestr(lang_file, data)
-                print(f"Added {lang_file} to all_in_one pack (2)")
+                all_in_one_count += 1
+    
+    print(f"all in one リソースパック作成完了: {all_in_one_pack_path} ({all_in_one_count} files)")
 
 if __name__ == "__main__":
     main("Prodigium Reforged (Terraria Pack)")
