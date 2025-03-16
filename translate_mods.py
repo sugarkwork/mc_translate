@@ -73,6 +73,7 @@ def check_mod_language(jar_path):
         return 2
 
 def check_jar_language(jar_path):
+    global mod_jp_cache
     """
     単一のJARファイルの言語ファイルをチェックする
     """
@@ -87,6 +88,12 @@ def check_jar_language(jar_path):
             # 日本語ファイルの確認
             jp_files = [f for f in lang_paths if f.endswith('ja_jp.json')]
             if jp_files:
+                result = {}
+                for jp_file in jp_files:
+                    with jar.open(jp_file) as f:
+                        data = f.read().decode('utf-8')
+                        result[jp_file] = data
+                mod_jp_cache[jar_path] = result
                 return 0  # 日本語化済み
             
             # 英語ファイルの確認
@@ -141,6 +148,8 @@ def create_translation_batch(jar_path, en_data, mod_name):
         jsonl_data.append(json_str)
     
     return jsonl_data
+
+mod_jp_cache = {}
 
 def create_resource_pack(jar_path, translated_data, mod_name, resource_pack_path, cache_dir):
     """リソースパックを作成する"""
@@ -236,13 +245,8 @@ def main(modpack_name="Our Story Earth"):
     global resource_packs
     resource_packs = []
 
-    # キャッシュの読み込み
-    mod_lang_cache_file = "mod_lang_cache.pkl"
     batch_id_file = "batch_id.txt"
     cache = {}
-    if os.path.exists(mod_lang_cache_file):
-        with open(mod_lang_cache_file, "rb") as f:
-            cache = pickle.load(f)
     
     # バッチIDの読み込み
     batch_id = None
@@ -287,10 +291,6 @@ def main(modpack_name="Our Story Earth"):
         if result == 1:  # 英語のみ
             en_mods.append(file)
     
-    # キャッシュの保存
-    with open(mod_lang_cache_file, "wb") as f:
-        pickle.dump(cache, f)
-    
     if not en_mods:
         print("翻訳が必要なMODは見つかりませんでした")
         return
@@ -318,10 +318,6 @@ def main(modpack_name="Our Story Earth"):
                 mod_name = os.path.splitext(file)[0]
                 if process_batch_results(results, jar_path, mod_name, resource_pack_path, cache_dir):
                     cache[file] = 0  # 日本語化済みとしてマーク
-            
-            # キャッシュの更新
-            with open(mod_lang_cache_file, "wb") as f:
-                pickle.dump(cache, f)
             
             # バッチIDの削除
             os.remove(batch_id_file)
@@ -431,7 +427,11 @@ def main(modpack_name="Our Story Earth"):
                     if file.endswith(".json"):
                         data = zfin.read(file).decode('utf-8')
                         zfout.writestr(file, data)
-                        print(f"Added {file} to all_in_one pack")
+                        print(f"Added {file} to all_in_one pack (1)")
+        for mod_name, mod_langs in mod_jp_cache.items():
+            for lang_file, data in mod_langs.items():
+                zfout.writestr(lang_file, data)
+                print(f"Added {lang_file} to all_in_one pack (2)")
 
 if __name__ == "__main__":
     main("Prodigium Reforged (Terraria Pack)")
