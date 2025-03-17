@@ -76,6 +76,10 @@ def check_jar_language(jar_path):
     global mod_jp_cache
     """
     単一のJARファイルの言語ファイルをチェックする
+    戻り値:
+        0: 日本語化済み（すべてのキーが翻訳済み）
+        1: 英語のみ、または一部のキーのみ翻訳済み（翻訳が必要）
+        2: その他
     """
     try:
         with zipfile.ZipFile(jar_path, 'r') as jar:
@@ -92,9 +96,10 @@ def check_jar_language(jar_path):
             en_files = [f for f in lang_paths if f.endswith('en_us.json')]
             
             if jp_files and en_files:
-                # 日本語ファイルと英語ファイルの両方が存在する場合、内容を比較
+                # 日本語ファイルと英語ファイルの両方が存在する場合、キーごとに比較
                 result = {}
-                is_actually_japanese = False
+                untranslated_keys = {}
+                has_japanese_content = False
                 
                 for jp_file in jp_files:
                     # 対応する英語ファイルのパスを取得
@@ -102,21 +107,45 @@ def check_jar_language(jar_path):
                     if en_file in en_files:
                         # 両方のファイルの内容を読み込む
                         with jar.open(jp_file) as f_jp:
-                            jp_data = f_jp.read().decode('utf-8')
+                            jp_data_str = f_jp.read().decode('utf-8')
+                            try:
+                                jp_data = loads(jp_data_str)
+                            except Exception as e:
+                                print(f"警告: {jp_file} のJSONパースに失敗しました: {str(e)}")
+                                continue
                         
                         with jar.open(en_file) as f_en:
-                            en_data = f_en.read().decode('utf-8')
+                            en_data_str = f_en.read().decode('utf-8')
+                            try:
+                                en_data = loads(en_data_str)
+                            except Exception as e:
+                                print(f"警告: {en_file} のJSONパースに失敗しました: {str(e)}")
+                                continue
                         
-                        # 内容が同じかどうかをチェック
-                        if jp_data != en_data:
-                            # 日本語の文字が含まれているかチェック（ひらがな、カタカナ、漢字）
-                            if any(ord(c) > 0x3000 for c in jp_data):
-                                is_actually_japanese = True
-                                result[jp_file] = jp_data
+                        # キーごとに比較
+                        missing_keys = {}
+                        for key, value in en_data.items():
+                            if key not in jp_data:
+                                # 日本語ファイルに存在しないキー
+                                missing_keys[key] = value
+                        
+                        # 日本語の文字が含まれているかチェック（ひらがな、カタカナ、漢字）
+                        if any(ord(c) > 0x3000 for c in jp_data_str):
+                            has_japanese_content = True
+                            result[jp_file] = jp_data
+                        
+                        if missing_keys:
+                            untranslated_keys[en_file] = missing_keys
                 
-                if is_actually_japanese:
+                if has_japanese_content:
                     mod_jp_cache[jar_path] = result
-                    return 0  # 実際に日本語化済み
+                    
+                    if untranslated_keys:
+                        # 一部のキーが翻訳されていない場合
+                        mod_jp_cache[jar_path + "_untranslated"] = untranslated_keys
+                        return 1  # 翻訳が必要
+                    else:
+                        return 0  # すべてのキーが翻訳済み
                 else:
                     # ja_jp.jsonは存在するが、実際には日本語化されていない
                     return 1  # 英語のみと同様に扱う
@@ -124,17 +153,21 @@ def check_jar_language(jar_path):
             elif jp_files:
                 # 日本語ファイルのみ存在する場合（稀なケース）
                 result = {}
-                is_actually_japanese = False
+                has_japanese_content = False
                 
                 for jp_file in jp_files:
                     with jar.open(jp_file) as f:
-                        jp_data = f.read().decode('utf-8')
+                        jp_data_str = f.read().decode('utf-8')
                         # 日本語の文字が含まれているかチェック
-                        if any(ord(c) > 0x3000 for c in jp_data):
-                            is_actually_japanese = True
-                            result[jp_file] = jp_data
+                        if any(ord(c) > 0x3000 for c in jp_data_str):
+                            has_japanese_content = True
+                            try:
+                                jp_data = loads(jp_data_str)
+                                result[jp_file] = jp_data
+                            except Exception as e:
+                                print(f"警告: {jp_file} のJSONパースに失敗しました: {str(e)}")
                 
-                if is_actually_japanese:
+                if has_japanese_content:
                     mod_jp_cache[jar_path] = result
                     return 0  # 実際に日本語化済み
                 else:
@@ -153,16 +186,43 @@ def check_jar_language(jar_path):
         return 2
 
 def create_translation_batch(jar_path, en_data, mod_name):
-    """翻訳バッチリクエストを作成する"""
+    """
+    翻訳バッチリクエストを作成する
+    
+    Parameters:
+    - jar_path: JARファイルのパス
+    - en_data: 英語の翻訳データ
+    - mod_name: MOD名
+    
+    Returns:
+    - jsonl_data: 翻訳リクエストのJSONLデータ
+    """
     jsonl_data = []
+    
+    # 翻訳が必要なキーのみを抽出
+    keys_to_translate = {}
+    
+    # 既存の日本語翻訳データがあるか確認
+    if jar_path + "_untranslated" in mod_jp_cache:
+        # 未翻訳のキーのみを抽出
+        untranslated_keys = mod_jp_cache[jar_path + "_untranslated"]
+        for en_file, missing_keys in untranslated_keys.items():
+            keys_to_translate.update(missing_keys)
+    else:
+        # 既存の翻訳データがない場合、すべてのキーを翻訳
+        keys_to_translate = en_data
+    
+    # 翻訳するキーがない場合は空のリストを返す
+    if not keys_to_translate:
+        return jsonl_data
     
     # テンプレート
     batch_template = {
-        "custom_id": "request-", 
+        "custom_id": "request-",
         "method": "POST",
-        "url": "/v1/chat/completions", 
+        "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-4o-mini-2024-07-18", 
+            "model": "gpt-4o-mini-2024-07-18",
             "messages": [
                 {
                     "role": "system",
@@ -178,7 +238,7 @@ def create_translation_batch(jar_path, en_data, mod_name):
     }
 
     # 50件ずつ分割して翻訳リクエストを作成
-    items = list(en_data.items())
+    items = list(keys_to_translate.items())
     for i in range(0, len(items), 50):
         batch = dict(items[i:i+50])
         
@@ -253,9 +313,28 @@ def create_resource_pack(jar_path, translated_data, mod_name, resource_pack_path
     print(f"リソースパック作成完了: {zip_path}")
 
 def process_batch_results(batch_results, jar_path, mod_name, resource_pack_path, cache_dir):
-    """バッチ処理結果を処理してリソースパックを作成する"""
+    """
+    バッチ処理結果を処理してリソースパックを作成する
+    
+    Parameters:
+    - batch_results: バッチ処理結果
+    - jar_path: JARファイルのパス
+    - mod_name: MOD名
+    - resource_pack_path: リソースパックの保存先パス
+    - cache_dir: キャッシュディレクトリ
+    
+    Returns:
+    - bool: 処理が成功したかどうか
+    """
     translated_data = {}
     
+    # 既存の翻訳データがあれば読み込む
+    existing_translations = {}
+    if jar_path in mod_jp_cache:
+        for jp_file, jp_data in mod_jp_cache[jar_path].items():
+            existing_translations.update(jp_data)
+    
+    # バッチ処理結果から翻訳データを抽出
     for result in batch_results:
         if not result["custom_id"].startswith(mod_name):
             continue
@@ -271,6 +350,15 @@ def process_batch_results(batch_results, jar_path, mod_name, resource_pack_path,
         except Exception as e:
             print(f"警告: 翻訳結果の解析に失敗: {str(e)}")
             continue
+    
+    # 既存の翻訳と新しい翻訳を統合
+    if existing_translations:
+        # 既存の翻訳を優先して使用し、不足している部分を新しい翻訳で補完
+        merged_data = existing_translations.copy()
+        for key, value in translated_data.items():
+            if key not in merged_data:
+                merged_data[key] = value
+        translated_data = merged_data
     
     if translated_data:
         create_resource_pack(jar_path, translated_data, mod_name, resource_pack_path, cache_dir)
@@ -408,15 +496,10 @@ def main(modpack_name="Our Story Earth"):
                         print(f"警告: {file} に英語ファイルが見つかりません")
                         continue
                     
-                    print(f"デバッグ - {file} の英語ファイルパス: {en_file_path}")
-                    print(f"デバッグ - ファイル内容の一部: {en_file_content[:200]}...")
-                    
                     en_data = loads(en_file_content)
                     if not en_data:
                         print(f"警告: {file} の英語ファイルが空です")
                         continue
-                    
-                    print(f"デバッグ - 読み込んだデータ: {dict(list(en_data.items())[:2])}...")
                     
                     requests = create_translation_batch(jar_path, en_data, mod_name)
                     all_requests.extend(requests)
@@ -454,7 +537,8 @@ def main(modpack_name="Our Story Earth"):
             print("次回の実行時に翻訳結果を確認します")
     
     # all in one resourcepack
-    all_in_one_pack_path = os.path.join(resource_pack_path, f"all_in_one_{modpack_name}_jp.zip")
+    all_in_one_pack_name = f"all_in_one_{modpack_name}_jp.zip"
+    all_in_one_pack_path = os.path.join(resource_pack_path, all_in_one_pack_name)
     pack_mcmeta = {
         "pack": {
             "description": f"{modpack_name} Japanese Translation",
@@ -465,19 +549,28 @@ def main(modpack_name="Our Story Earth"):
     all_in_one_count = 0
     with zipfile.ZipFile(all_in_one_pack_path, 'w', zipfile.ZIP_DEFLATED) as zfout:
         zfout.writestr('pack.mcmeta', json.dumps(pack_mcmeta, indent=4, ensure_ascii=False))
+        result_data = {}
         for i, pack in enumerate(resource_packs):
             with zipfile.ZipFile(pack, 'r') as zfin:
                 for file in zfin.namelist():
                     if file.endswith(".json"):
-                        data = zfin.read(file).decode('utf-8')
-                        zfout.writestr(file, data)
+                        json_data = json.loads(zfin.read(file).decode('utf-8'))
+                        result_data[file] = json_data
                         all_in_one_count += 1
+
         for mod_name, mod_langs in mod_jp_cache.items():
             for lang_file, data in mod_langs.items():
-                zfout.writestr(lang_file, data)
-                all_in_one_count += 1
+                if lang_file in result_data:
+                    result_data[lang_file].update(data)
+                else:
+                    result_data[lang_file] = data
+                    all_in_one_count += 1
+        
+        for lang_file, data in result_data.items():
+            zfout.writestr(lang_file, json.dumps(data, indent=4, ensure_ascii=False))
+            
     
-    print(f"all in one リソースパック作成完了: {all_in_one_pack_path} ({all_in_one_count} files)")
+    print(f"all in one リソースパック作成完了: {all_in_one_pack_name} ({all_in_one_count} files)")
 
 if __name__ == "__main__":
     main("Prodigium Reforged (Terraria Pack)")
