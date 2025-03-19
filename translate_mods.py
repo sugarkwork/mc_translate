@@ -6,6 +6,10 @@ from json_repair import loads
 from openai import OpenAI
 import shutil
 
+if not os.path.exists(".env"):
+    with open(".env", "w") as f:
+        f.write("OPENAI_API_KEY=\"\"\n\n")
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -363,12 +367,62 @@ def process_batch_results(batch_results, jar_path, mod_name, resource_pack_path,
         return True
     return False
 
-def main(modpack_name="Our Story Earth"):
-    # パスの設定
+
+def get_curseforge_instance() -> list:
     userprofile = os.environ.get("USERPROFILE")
-    instance_path = os.path.join(userprofile, r"curseforge\minecraft\Instances", modpack_name)
+    instance_path = os.path.join(userprofile, r"curseforge\minecraft\Instances")
+    path_list = []
+    if os.path.exists(instance_path):
+        path_list = [os.path.join(instance_path, instance_name) for instance_name in os.listdir(instance_path)]
+    return path_list
+
+
+def get_microsoft_instance() -> list:
+    mcprofile = os.path.join(os.environ.get("APPDATA"), '.minecraft')
+    if os.path.exists(mcprofile):
+        return [mcprofile]
+    return []
+
+
+def get_en_mods(instance_path, cache_dir, copy_cache=False):
+    global resource_packs
+
     mods_path = os.path.join(instance_path, "mods")
     resource_pack_path = os.path.join(instance_path, "resourcepacks")
+    
+    en_mods = []
+    for file in os.listdir(mods_path):
+        if not file.endswith('.jar'):
+            continue
+            
+        jar_path = os.path.join(mods_path, file)
+        mod_name = os.path.splitext(file)[0]
+        zip_path = os.path.join(resource_pack_path, f"{mod_name}_jp.zip")
+        
+        if os.path.exists(zip_path):
+            resource_packs.append(zip_path)
+            continue
+            
+        cache_name = os.path.join(cache_dir, f"{mod_name}_jp.zip")
+        if os.path.exists(cache_name) and copy_cache:
+            shutil.copy(cache_name, zip_path)
+            print(f"リソースパックのキャッシュを利用: {zip_path}")
+            resource_packs.append(zip_path)
+            continue
+    
+        result = check_mod_language(jar_path)
+    
+        if result == 1:  # 英語のみ
+            en_mods.append(file)
+    
+    return en_mods
+
+
+def main(instance_path):
+    # パスの設定
+    mods_path = os.path.join(instance_path, "mods")
+    resource_pack_path = os.path.join(instance_path, "resourcepacks")
+    modpack_name = os.path.basename(instance_path)
     
     global resource_packs
     resource_packs = []
@@ -386,38 +440,11 @@ def main(modpack_name="Our Story Earth"):
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
     
-    
-    
+
     # MODの言語状態をチェック
     print("=== MODの言語状態をチェック中 ===")
-    en_mods = []
-    for file in os.listdir(mods_path):
-        if not file.endswith('.jar'):
-            continue
-            
-        jar_path = os.path.join(mods_path, file)
-        mod_name = os.path.splitext(file)[0]
-        zip_path = os.path.join(resource_pack_path, f"{mod_name}_jp.zip")
-        
-        if os.path.exists(zip_path):
-            resource_packs.append(zip_path)
-            continue
-            
-        cache_name = os.path.join(cache_dir, f"{mod_name}_jp.zip")
-        if os.path.exists(cache_name):
-            shutil.copy(cache_name, zip_path)
-            print(f"リソースパックのキャッシュを利用: {zip_path}")
-            resource_packs.append(zip_path)
-            continue
-        
-        if file in cache:
-            result = cache[file]
-        else:
-            result = check_mod_language(jar_path)
-            cache[file] = result
-        
-        if result == 1:  # 英語のみ
-            en_mods.append(file)
+    en_mods = get_en_mods(instance_path, cache_dir, copy_cache=True)
+
     
     if not en_mods:
         print("翻訳が必要なMODは見つかりませんでした")
@@ -570,5 +597,15 @@ def main(modpack_name="Our Story Earth"):
     
     print(f"all in one リソースパック作成完了: {all_in_one_pack_name} ({all_in_one_count} files)")
 
+
+def test():
+    target = 'Prodigium Reforged (Terraria Pack)'
+
+    instance_list = get_curseforge_instance() + get_microsoft_instance()
+    for instance in instance_list:
+        if target in instance:
+            main(instance)
+            break
+
 if __name__ == "__main__":
-    main("Prodigium Reforged (Terraria Pack)")
+    test()
