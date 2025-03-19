@@ -18,6 +18,7 @@ load_dotenv()
 client = OpenAI()
 
 resource_packs = []
+cache_dir = os.path.join(os.path.dirname(__file__), "cache")
 
 
 def extract_nested_jars(jar_path, temp_dir):
@@ -418,6 +419,7 @@ def get_en_mods(instance_path, cache_dir, copy_cache=False):
     return en_mods
 
 
+
 def main(instance_path):
     # パスの設定
     mods_path = os.path.join(instance_path, "mods")
@@ -436,7 +438,7 @@ def main(instance_path):
         with open(batch_id_file, "r") as f:
             batch_id = f.read().strip()
     
-    cache_dir = "cache"
+    
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
     
