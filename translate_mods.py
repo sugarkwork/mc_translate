@@ -599,7 +599,7 @@ def main(instance_path):
 
 
 def test():
-    target = 'Prodigium Reforged (Terraria Pack)'
+    target = 'Boosted FPS [FORGE] Performance Mods'
 
     instance_list = get_curseforge_instance() + get_microsoft_instance()
     for instance in instance_list:
