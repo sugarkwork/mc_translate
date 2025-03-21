@@ -385,7 +385,7 @@ def get_microsoft_instance() -> list:
     return []
 
 
-def get_en_mods(instance_path, cache_dir, copy_cache=False):
+def get_en_mods(instance_path, copy_cache=False):
     global resource_packs
 
     mods_path = os.path.join(instance_path, "mods")
@@ -425,11 +425,13 @@ def main(instance_path):
     mods_path = os.path.join(instance_path, "mods")
     resource_pack_path = os.path.join(instance_path, "resourcepacks")
     modpack_name = os.path.basename(instance_path)
+    import hashlib
+    modpackname_hash = hashlib.md5(modpack_name.encode()).hexdigest()
     
     global resource_packs
     resource_packs = []
 
-    batch_id_file = "batch_id.txt"
+    batch_id_file = modpackname_hash + "batch_id.txt"
     cache = {}
     
     # バッチIDの読み込み
@@ -438,14 +440,11 @@ def main(instance_path):
         with open(batch_id_file, "r") as f:
             batch_id = f.read().strip()
     
-    
-    if not os.path.exists(cache_dir):
-        os.mkdir(cache_dir)
-    
+    os.makedirs(cache_dir, exist_ok=True)
 
     # MODの言語状態をチェック
     print("=== MODの言語状態をチェック中 ===")
-    en_mods = get_en_mods(instance_path, cache_dir, copy_cache=True)
+    en_mods = get_en_mods(instance_path, copy_cache=True)
 
     
     if not en_mods:
