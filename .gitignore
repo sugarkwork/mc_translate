@@ -4,3 +4,4 @@
 /venv
 batch.jsonl
 batch_id.txt
+__pycache__/
