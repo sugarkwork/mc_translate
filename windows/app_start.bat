@@ -17,7 +17,7 @@ REM requirements.txt 以外の追加パッケージをスペース区切りで�
 set "EXTRA_PACKAGES="
 
 REM 起動コマンド
-set "STARTUP_COMMAND=python translate_mods.py"
+set "STARTUP_COMMAND=python main.py"
 
 REM Python バージョン（ 3.13.2/3.12.9/3.11.9/3.10.11 ）
 set "PYTHON_VERSION=3.11.9"

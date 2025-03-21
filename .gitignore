@@ -5,3 +5,6 @@
 batch.jsonl
 batch_id.txt
 __pycache__/
+windows/python/
+windows/setup_log.txt
+windows/mc_translate/
