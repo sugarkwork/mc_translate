@@ -1,316 +1,331 @@
 @echo off
+chcp 65001 > nul 2>&1
 setlocal enabledelayedexpansion
 
 REM ============================================================================
-REM İ’èƒZƒNƒVƒ‡ƒ“
+REM è¨­å®šã‚»ã‚¯ã‚·ãƒ§ãƒ³
 REM ============================================================================
 
-REM ƒŠƒ|ƒWƒgƒŠ–¼AƒŠƒ|ƒWƒgƒŠURL
+REM ãƒªãƒã‚¸ãƒˆãƒªåã€ãƒªãƒã‚¸ãƒˆãƒªURL
 set "REPO_NAME=mc_translate"
 set "REPO_URL=https://github.com/sugarkwork/mc_translate"
 
-REM requirements.txt ˆÈŠO‚Ì’Ç‰ÁƒpƒbƒP[ƒW‚ğƒXƒy[ƒX‹æØ‚è‚Åw’è
+REM requirements.txt ä»¥å¤–ã®è¿½åŠ ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã‚’ã‚¹ãƒšãƒ¼ã‚¹åŒºåˆ‡ã‚Šã§æŒ‡å®š
 set "EXTRA_PACKAGES="
 
-REM ‹N“®ƒRƒ}ƒ“ƒh
+REM èµ·å‹•ã‚³ãƒãƒ³ãƒ‰
 set "STARTUP_COMMAND=python translate_mods.py"
 
-REM Python ƒo[ƒWƒ‡ƒ“i 3.13.2/3.12.9/3.11.9/3.10.11 j
+REM Python ãƒãƒ¼ã‚¸ãƒ§ãƒ³ï¼ˆ 3.13.2/3.12.9/3.11.9/3.10.11 ï¼‰
 set "PYTHON_VERSION=3.11.9"
 
-REM PyTorch ƒo[ƒWƒ‡ƒ“‚Ìw’è
-REM 1: ƒCƒ“ƒXƒg[ƒ‹‚µ‚È‚¢
-REM 2: CPU”Å‚ğƒCƒ“ƒXƒg[ƒ‹
-REM 3: CUDA 11.8—p‚ğƒCƒ“ƒXƒg[ƒ‹
-REM 4: CUDA 12.4—p‚ğƒCƒ“ƒXƒg[ƒ‹
-REM 5: CUDA 12.6—p‚ğƒCƒ“ƒXƒg[ƒ‹
+REM PyTorch ãƒãƒ¼ã‚¸ãƒ§ãƒ³ã®æŒ‡å®š
+REM 1: ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã—ãªã„
+REM 2: CPUç‰ˆã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+REM 3: CUDA 11.8ç”¨ã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+REM 4: CUDA 12.4ç”¨ã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+REM 5: CUDA 12.6ç”¨ã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
 set "PYTORCH_OPTION=1"
 
-REM ƒƒOƒtƒ@ƒCƒ‹–¼
+REM ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«å
 set "LOG_FILE=setup_log.txt"
 
 REM ============================================================================
-REM ‰Šú‰»
+REM åˆæœŸåŒ–
 REM ============================================================================
 set "CURRENT_DIR=%CD%"
 set "ORIGINAL_PATH=%PATH%"
-set "PATH=!CURRENT_DIR!\python;%PATH%"
+set "__file__=%~f0"
 
-echo ƒƒOƒtƒ@ƒCƒ‹: !LOG_FILE! >> !LOG_FILE!
-echo Às“ú: !date! !time! >> !LOG_FILE!
+echo ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«: !LOG_FILE! >> !LOG_FILE!
+echo å®Ÿè¡Œæ—¥æ™‚: !date! !time! >> !LOG_FILE!
 echo. >> !LOG_FILE!
 
 echo ===================================================
-echo ŠÂ‹«ƒZƒbƒgƒAƒbƒv
+echo ç’°å¢ƒã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—
 echo ===================================================
-echo Pythonƒo[ƒWƒ‡ƒ“: !PYTHON_VERSION!
+echo Pythonãƒãƒ¼ã‚¸ãƒ§ãƒ³: !PYTHON_VERSION!
 echo.
 
 REM ============================================================================
-REM PythonƒZƒbƒgƒAƒbƒv
+REM Pythonã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—
 REM ============================================================================
-echo [1/12] PythonƒfƒBƒŒƒNƒgƒŠ‚ÌŠm”F
+echo [1/3] Pythonãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã®ç¢ºèª
 if exist python (
-    echo       Šù‘¶‚ÌƒfƒBƒŒƒNƒgƒŠ‚ğg—p‚µ‚Ü‚·
+    echo       æ—¢å­˜ã®ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’ä½¿ç”¨ã—ã¾ã™
 ) else (
-    echo       V‹Kì¬‚µ‚Ü‚·
+    echo       æ–°è¦ä½œæˆã—ã¾ã™
     mkdir python >> !LOG_FILE! 2>&1
 )
 cd python
+set "PATH=!CURRENT_DIR!\python;%PATH%"
 
-echo [2/12] Python–„‚ß‚İƒpƒbƒP[ƒW‚Ìæ“¾
+echo [2/3] PythonåŸ‹ã‚è¾¼ã¿ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®å–å¾—
 set "PYTHON_ZIP=python-!PYTHON_VERSION!-embed-amd64.zip"
 set "PYTHON_URL=https://www.python.org/ftp/python/!PYTHON_VERSION!/!PYTHON_ZIP!"
 
 if exist !PYTHON_ZIP! (
-    echo       ƒpƒbƒP[ƒW: Šù‚Éƒ_ƒEƒ“ƒ[ƒhÏ‚İ
+    echo       ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸: æ—¢ã«ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰æ¸ˆã¿
 ) else (
-    echo       ƒ_ƒEƒ“ƒ[ƒh’†...
+    echo       ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ä¸­...
     echo curl -L -o !PYTHON_ZIP! !PYTHON_URL! >> !LOG_FILE! 2>&1
     curl -L -o !PYTHON_ZIP! !PYTHON_URL! >> !LOG_FILE! 2>&1
     if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: ƒpƒbƒP[ƒW‚Ìƒ_ƒEƒ“ƒ[ƒh‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
+        echo ã‚¨ãƒ©ãƒ¼: ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã«å¤±æ•—ã—ã¾ã—ãŸ
+        echo è©³ç´°ã¯ !LOG_FILE! ã‚’ç¢ºèªã—ã¦ãã ã•ã„
         pause
         exit /b 1
     )
 )
 
-echo [3/12] ƒpƒbƒP[ƒW‚Ì‰ğ“€
+echo [3/3] ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®è§£å‡
 if exist python.exe (
-    echo       ‰ğ“€: Šù‚ÉŠ®—¹‚µ‚Ä‚¢‚Ü‚·
+    echo       è§£å‡: æ—¢ã«å®Œäº†ã—ã¦ã„ã¾ã™
 ) else (
-    echo       ‰ğ“€’†...
+    echo       è§£å‡ä¸­...
     echo tar -xf !PYTHON_ZIP! >> !LOG_FILE! 2>&1
     tar -xf !PYTHON_ZIP! >> !LOG_FILE! 2>&1
     if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: ‰ğ“€‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
+        echo ã‚¨ãƒ©ãƒ¼: è§£å‡ã«å¤±æ•—ã—ã¾ã—ãŸ
+        echo è©³ç´°ã¯ !LOG_FILE! ã‚’ç¢ºèªã—ã¦ãã ã•ã„
         pause
         cd ..
         exit /b 1
-    )
-)
-
-echo [4/12] Pythonİ’èƒtƒ@ƒCƒ‹‚ÌC³
-set pth_already_modified=0
-for %%F in (python*._pth) do (
-    set "pthfile=%%F"
-    
-    findstr /c:"import site" "!pthfile!" > nul
-    if !errorlevel! equ 0 (
-        findstr /c:"#import site" "!pthfile!" > nul
-        if !errorlevel! neq 0 (
-            echo       İ’è: Šù‚ÉC³Ï‚İ‚Å‚·
-            set pth_already_modified=1
-        )
-    )
-    
-    if !pth_already_modified! equ 0 (
-        echo       İ’èƒtƒ@ƒCƒ‹C³’†...
-        echo ----- pthƒtƒ@ƒCƒ‹•ÒWŠJn ----- >> !LOG_FILE!
-        type "!pthfile!" >> !LOG_FILE!
-        echo ----- •ÒW‘O“à—e ----- >> !LOG_FILE!
-        
-        type nul > temp_pth.txt
-        for /f "tokens=*" %%L in ('type "!pthfile!"') do (
-            set "line=%%L"
-            if "!line!"=="#import site" (
-                echo import site >> temp_pth.txt
-            ) else (
-                echo !line! >> temp_pth.txt
-            )
-        )
-        
-        move /y temp_pth.txt "!pthfile!" >> !LOG_FILE! 2>&1
-        echo ----- •ÒWŒã“à—e ----- >> !LOG_FILE!
-        type "!pthfile!" >> !LOG_FILE!
-    )
-)
-
-echo [5/12] pip“±“üƒXƒNƒŠƒvƒg‚Ìæ“¾
-if exist get-pip.py (
-    echo       ƒXƒNƒŠƒvƒg: Šù‚Éƒ_ƒEƒ“ƒ[ƒhÏ‚İ
-) else (
-    echo       ƒ_ƒEƒ“ƒ[ƒh’†...
-    echo curl -L -o get-pip.py https://bootstrap.pypa.io/get-pip.py >> !LOG_FILE! 2>&1
-    curl -L -o get-pip.py https://bootstrap.pypa.io/get-pip.py >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: get-pip.py‚Ìƒ_ƒEƒ“ƒ[ƒh‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        cd ..
-        exit /b 1
-    )
-)
-
-echo [6/12] pip‚ÌƒCƒ“ƒXƒg[ƒ‹
-if exist Scripts\pip.exe (
-    echo       pip: Šù‚ÉƒCƒ“ƒXƒg[ƒ‹Ï‚İ
-) else (
-    echo       ƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python get-pip.py >> !LOG_FILE! 2>&1
-    python get-pip.py >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: pip‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        cd ..
-        exit /b 1
-    )
-)
-
-echo [7/12] uvƒpƒbƒP[ƒWƒ}ƒl[ƒWƒƒ‚ÌƒCƒ“ƒXƒg[ƒ‹
-if exist Scripts\uv.exe (
-    echo       uv: Šù‚ÉƒCƒ“ƒXƒg[ƒ‹Ï‚İ
-) else (
-    echo       ƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python -m pip install uv >> !LOG_FILE! 2>&1
-    python -m pip install uv >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: uv‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        cd ..
-        exit /b 1
-    )
-)
-
-if not defined REPO_URL (
-    echo [8/12] GitƒNƒ‰ƒCƒAƒ“ƒg‚ÌƒCƒ“ƒXƒg[ƒ‹‚ÍƒXƒLƒbƒv‚µ‚Ü‚·
-) else (
-    echo [8/12] GitƒNƒ‰ƒCƒAƒ“ƒg‚ÌƒCƒ“ƒXƒg[ƒ‹
-    if exist Scripts\dulwich.exe (
-        echo       dulwich: Šù‚ÉƒCƒ“ƒXƒg[ƒ‹Ï‚İ
-    ) else (
-        echo       ƒCƒ“ƒXƒg[ƒ‹’†...
-        echo python -m uv pip install dulwich >> !LOG_FILE! 2>&1
-        python -m uv pip install dulwich >> !LOG_FILE! 2>&1
-        if !errorlevel! neq 0 (
-            echo ƒGƒ‰[: dulwich‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-            echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-            pause
-            cd ..
-            exit /b 1
-        )
     )
 )
 
 cd ..
 
-echo [9/12] PyTorch‚ÌƒCƒ“ƒXƒg[ƒ‹
-if "!PYTORCH_OPTION!"=="1" (
-    echo       PyTorch: ƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚¹‚ñ
-) else if "!PYTORCH_OPTION!"=="2" (
-    echo       CPU”ÅPyTorch‚ğƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python -m uv pip install torch torchvision torchaudio >> !LOG_FILE! 2>&1
-    python -m uv pip install torch torchvision torchaudio >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: PyTorch‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        exit /b 1
-    )
-) else if "!PYTORCH_OPTION!"=="3" (
-    echo       CUDA 11.8—pPyTorch‚ğƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 >> !LOG_FILE! 2>&1
-    python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: PyTorch‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        exit /b 1
-    )
-) else if "!PYTORCH_OPTION!"=="4" (
-    echo       CUDA 12.4—pPyTorch‚ğƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 >> !LOG_FILE! 2>&1
-    python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: PyTorch‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        exit /b 1
-    )
-) else if "!PYTORCH_OPTION!"=="5" (
-    echo       CUDA 12.6—pPyTorch‚ğƒCƒ“ƒXƒg[ƒ‹’†...
-    echo python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 >> !LOG_FILE! 2>&1
-    python -m uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126 >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: PyTorch‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        exit /b 1
-    )
-)
+REM ============================================================================
+REM Pythonã‚³ãƒ¼ãƒ‰ã®å®Ÿè¡Œ
+REM ============================================================================
 
-if "!REPO_URL!" == "" (
-    echo [10/12] ƒŠƒ|ƒWƒgƒŠ‚ÌƒNƒ[ƒ“‚ÍƒXƒLƒbƒv‚µ‚Ü‚·
-    echo [11/12] ˆË‘¶ƒpƒbƒP[ƒW‚ÌƒCƒ“ƒXƒg[ƒ‹‚ÍƒXƒLƒbƒv‚µ‚Ü‚·
-) else (
-    echo [10/12] ƒŠƒ|ƒWƒgƒŠ‚ÌƒNƒ[ƒ“
-    if exist "!REPO_NAME!" (
-        echo       !REPO_NAME!: Šù‚É‘¶İ‚µ‚Ü‚·
-    ) else (
-        echo       ƒNƒ[ƒ“’†...
-        echo python -m dulwich clone !REPO_URL! >> !LOG_FILE! 2>&1
-        python -m dulwich clone !REPO_URL! >> !LOG_FILE! 2>&1
-        if !errorlevel! neq 0 (
-            echo ƒGƒ‰[: ƒŠƒ|ƒWƒgƒŠ‚ÌƒNƒ[ƒ“‚É¸”s‚µ‚Ü‚µ‚½
-            echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-            pause
-            exit /b 1
-        )
-    )
+python -c "import sys; f=open(sys.argv[1],'r',encoding='utf-8'); lines=f.readlines(); f.close(); start=False; code=''; [code:=code+line for line in lines if start or (start:=(line.strip()=='___PYTHON_CODE___'))]; exec(code.replace('___PYTHON_CODE___',''))" "%__file__%"
 
-    echo [11/12] ˆË‘¶ƒpƒbƒP[ƒW‚ÌƒCƒ“ƒXƒg[ƒ‹
-    if exist "!REPO_NAME!\requirements.txt" (
-        echo       requirements.txt‚©‚çƒCƒ“ƒXƒg[ƒ‹’†...
-        echo python -m uv pip install -U -r !REPO_NAME!\requirements.txt >> !LOG_FILE! 2>&1
-        python -m uv pip install -U -r !REPO_NAME!\requirements.txt >> !LOG_FILE! 2>&1
-        if !errorlevel! neq 0 (
-            echo ƒGƒ‰[: ƒpƒbƒP[ƒW‚ÌƒCƒ“ƒXƒg[ƒ‹‚É¸”s‚µ‚Ü‚µ‚½
-            echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo       requirements.txt: Œ©‚Â‚©‚è‚Ü‚¹‚ñ
-    )
+exit /b
 
-)
+___PYTHON_CODE___
+# ã“ã“ã‹ã‚‰Pythonã‚³ãƒ¼ãƒ‰ã¨ã—ã¦å®Ÿè¡Œ
+import os
+import sys
+import glob
+import subprocess
+import urllib.request
+import time
+import shutil
 
-if "!EXTRA_PACKAGES!" == "" (
-    echo [12/12] ’Ç‰ÁƒpƒbƒP[ƒW‚Ì“±“ü‚ÍƒXƒLƒbƒv‚µ‚Ü‚·
-) else (
-    echo [12/12] ’Ç‰ÁƒpƒbƒP[ƒW‚Ì“±“ü
-    echo python -m uv pip install !EXTRA_PACKAGES! >> !LOG_FILE! 2>&1
-    python -m uv pip install !EXTRA_PACKAGES! >> !LOG_FILE! 2>&1
-    if !errorlevel! neq 0 (
-        echo ƒGƒ‰[: ’Ç‰ÁƒpƒbƒP[ƒW‚Ì“±“ü‚É¸”s‚µ‚Ü‚µ‚½
-        echo Ú×‚Í !LOG_FILE! ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢
-        pause
-        exit /b 1
-    )
-)
+# ç’°å¢ƒå¤‰æ•°ã‚’å–å¾—
+current_dir = os.environ.get('CURRENT_DIR', os.getcwd())
+python_dir = os.path.join(current_dir, 'python')
+repo_name = os.environ.get('REPO_NAME', '')
+repo_url = os.environ.get('REPO_URL', '')
+extra_packages = os.environ.get('EXTRA_PACKAGES', '')
+startup_command = os.environ.get('STARTUP_COMMAND', '')
+pytorch_option = os.environ.get('PYTORCH_OPTION', '1')
+log_file = os.environ.get('LOG_FILE', 'setup_log.txt')
 
-echo.
-echo ===================================================
-echo ƒZƒbƒgƒAƒbƒvŠ®—¹‚µ‚Ü‚µ‚½
-echo ===================================================
-echo ƒƒOƒtƒ@ƒCƒ‹: !LOG_FILE!
-echo.
-echo ===================================================
-echo ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‹N“®
-echo ===================================================
+# ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ã®ãƒ‘ã‚¹
+log_path = os.path.join(current_dir, log_file)
 
-if "!REPO_URL!" == "" (
-    echo ƒfƒBƒŒƒNƒgƒŠ: !CD!
-) else (
-    echo ƒfƒBƒŒƒNƒgƒŠ: !REPO_NAME!
-    cd !REPO_NAME!
-)
+# å®Ÿè¡Œé–¢æ•°
+def run_command(cmd, desc=None, check=True):
+    if desc:
+        print(f"       {desc}")
+    
+    cmd_str = ' '.join(cmd) if isinstance(cmd, list) else cmd
+    with open(log_path, 'a', encoding='utf-8') as f:
+        f.write(f"\n$ {cmd_str}\n")
+    
+    try:
+        if isinstance(cmd, list):
+            process = subprocess.run(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8'
+            )
+        else:
+            process = subprocess.run(
+                cmd,
+                shell=True,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8'
+            )
+        
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(process.stdout)
+        
+        if check and process.returncode != 0:
+            print(f"ã‚¨ãƒ©ãƒ¼: ã‚³ãƒãƒ³ãƒ‰å®Ÿè¡Œã«å¤±æ•—ã—ã¾ã—ãŸ: {cmd_str}")
+            print(f"è©³ç´°ã¯ {log_file} ã‚’ç¢ºèªã—ã¦ãã ã•ã„")
+            input("ç¶šè¡Œã™ã‚‹ã«ã¯ä½•ã‹ã‚­ãƒ¼ã‚’æŠ¼ã—ã¦ãã ã•ã„...")
+            return False
+    except Exception as e:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f"ã‚³ãƒãƒ³ãƒ‰å®Ÿè¡Œä¾‹å¤–: {str(e)}\n")
+        print(f"ã‚¨ãƒ©ãƒ¼: ã‚³ãƒãƒ³ãƒ‰å®Ÿè¡Œä¸­ã«ä¾‹å¤–ãŒç™ºç”Ÿã—ã¾ã—ãŸ: {cmd_str}")
+        print(f"è©³ç´°ã¯ {log_file} ã‚’ç¢ºèªã—ã¦ãã ã•ã„")
+        input("ç¶šè¡Œã™ã‚‹ã«ã¯ä½•ã‹ã‚­ãƒ¼ã‚’æŠ¼ã—ã¦ãã ã•ã„...")
+        return False
+    
+    return True
 
-echo ƒRƒ}ƒ“ƒh: !STARTUP_COMMAND!
-!STARTUP_COMMAND!
+# ã‚¹ãƒ†ãƒƒãƒ—4: Pythonè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«ã®ä¿®æ­£
+print("[4/12] Pythonè¨­å®šãƒ•ã‚¡ã‚¤ãƒ«ã®ä¿®æ­£")
+os.chdir(python_dir)
+pth_files = glob.glob("python*._pth")
 
-pause
+if pth_files:
+    pth_file = pth_files[0]
+    pth_modified = False
+    
+    with open(pth_file, 'r') as f:
+        content = f.read()
+    
+    if "#import site" in content:
+        print("       è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«ä¿®æ­£ä¸­...")
+        modified_content = content.replace("#import site", "import site")
+        
+        with open(pth_file, 'w') as f:
+            f.write(modified_content)
+        
+        with open(log_path, 'a', encoding='utf-8') as log:
+            log.write("----- pthãƒ•ã‚¡ã‚¤ãƒ«ç·¨é›†é–‹å§‹ -----\n")
+            log.write("ç·¨é›†å‰:\n")
+            log.write(content)
+            log.write("\nç·¨é›†å¾Œ:\n")
+            log.write(modified_content)
+            log.write("\n----- pthãƒ•ã‚¡ã‚¤ãƒ«ç·¨é›†çµ‚äº† -----\n")
+    else:
+        print("       è¨­å®š: æ—¢ã«ä¿®æ­£æ¸ˆã¿ã§ã™")
+
+# ã‚¹ãƒ†ãƒƒãƒ—5: pipå°å…¥ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®å–å¾—
+print("[5/12] pipå°å…¥ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®å–å¾—")
+if os.path.exists("get-pip.py"):
+    print("       ã‚¹ã‚¯ãƒªãƒ—ãƒˆ: æ—¢ã«ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰æ¸ˆã¿")
+else:
+    print("       ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ä¸­...")
+    try:
+        urllib.request.urlretrieve("https://bootstrap.pypa.io/get-pip.py", "get-pip.py")
+    except Exception as e:
+        with open(log_path, 'a', encoding='utf-8') as log:
+            log.write(f"get-pip.pyã®ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã‚¨ãƒ©ãƒ¼: {str(e)}\n")
+        print(f"ã‚¨ãƒ©ãƒ¼: get-pip.pyã®ãƒ€ã‚¦ãƒ³ãƒ­ãƒ¼ãƒ‰ã«å¤±æ•—ã—ã¾ã—ãŸ")
+        print(f"è©³ç´°ã¯ {log_file} ã‚’ç¢ºèªã—ã¦ãã ã•ã„")
+        input("ç¶šè¡Œã™ã‚‹ã«ã¯ä½•ã‹ã‚­ãƒ¼ã‚’æŠ¼ã—ã¦ãã ã•ã„...")
+        sys.exit(1)
+
+# ã‚¹ãƒ†ãƒƒãƒ—6: pipã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+print("[6/12] pipã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«")
+if os.path.exists(os.path.join("Scripts", "pip.exe")):
+    print("       pip: æ—¢ã«ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ¸ˆã¿")
+else:
+    print("       ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­...")
+    # åŸ‹ã‚è¾¼ã¿ç‰ˆPythonã®å ´åˆã¯ç›´æ¥å®Ÿè¡Œã™ã‚‹å¿…è¦ãŒã‚ã‚‹
+    if not run_command(["python", "get-pip.py", "--no-warn-script-location"]):
+        os.chdir(current_dir)
+        sys.exit(1)
+
+# ã‚¹ãƒ†ãƒƒãƒ—7: uvãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ãƒãƒãƒ¼ã‚¸ãƒ£ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+print("[7/12] uvãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ãƒãƒãƒ¼ã‚¸ãƒ£ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«")
+if os.path.exists(os.path.join("Scripts", "uv.exe")):
+    print("       uv: æ—¢ã«ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ¸ˆã¿")
+else:
+    # pipã‚³ãƒãƒ³ãƒ‰ã‚’ç›´æ¥å®Ÿè¡Œã™ã‚‹ï¼ˆãƒ¢ã‚¸ãƒ¥ãƒ¼ãƒ«ã¨ã—ã¦ã§ã¯ãªãï¼‰
+    if not run_command(["python", "-m", "pip", "install", "uv", "--no-warn-script-location"], "ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        os.chdir(current_dir)
+        sys.exit(1)
+
+# ã‚¹ãƒ†ãƒƒãƒ—8: Gitã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+if not repo_url:
+    print("[8/12] Gitã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã¯ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã™")
+else:
+    print("[8/12] Gitã‚¯ãƒ©ã‚¤ã‚¢ãƒ³ãƒˆã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«")
+    dulwich_path = os.path.join("Lib", "site-packages", "dulwich")
+    if os.path.exists(dulwich_path):
+        print("       dulwich: æ—¢ã«ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«æ¸ˆã¿")
+    else:
+        if not run_command(["python", "-m", "uv", "pip", "install", "dulwich"], "ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+            os.chdir(current_dir)
+            sys.exit(1)
+
+os.chdir(current_dir)
+
+# ã‚¹ãƒ†ãƒƒãƒ—9: PyTorchã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+print("[9/12] PyTorchã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«")
+if pytorch_option == "1":
+    print("       PyTorch: ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã—ã¾ã›ã‚“")
+elif pytorch_option == "2":
+    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio"], 
+                     "CPUç‰ˆPyTorchã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        sys.exit(1)
+elif pytorch_option == "3":
+    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
+                      "--index-url", "https://download.pytorch.org/whl/cu118"], 
+                     "CUDA 11.8ç”¨PyTorchã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        sys.exit(1)
+elif pytorch_option == "4":
+    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
+                      "--index-url", "https://download.pytorch.org/whl/cu124"], 
+                     "CUDA 12.4ç”¨PyTorchã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        sys.exit(1)
+elif pytorch_option == "5":
+    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
+                      "--index-url", "https://download.pytorch.org/whl/cu126"], 
+                     "CUDA 12.6ç”¨PyTorchã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        sys.exit(1)
+
+# ã‚¹ãƒ†ãƒƒãƒ—10ã¨11: ãƒªãƒã‚¸ãƒˆãƒªã®ã‚¯ãƒ­ãƒ¼ãƒ³ã¨ä¾å­˜ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«
+if not repo_url:
+    print("[10/12] ãƒªãƒã‚¸ãƒˆãƒªã®ã‚¯ãƒ­ãƒ¼ãƒ³ã¯ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã™")
+    print("[11/12] ä¾å­˜ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ã¯ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã™")
+else:
+    print("[10/12] ãƒªãƒã‚¸ãƒˆãƒªã®ã‚¯ãƒ­ãƒ¼ãƒ³")
+    if os.path.exists(os.path.join(current_dir, repo_name)):
+        print(f"       {repo_name}: æ—¢ã«å­˜åœ¨ã—ã¾ã™")
+    else:
+        if not run_command(["python", "-m", "dulwich", "clone", repo_url], "ã‚¯ãƒ­ãƒ¼ãƒ³ä¸­..."):
+            sys.exit(1)
+
+    print("[11/12] ä¾å­˜ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«")
+    req_file = os.path.join(current_dir, repo_name, "requirements.txt")
+    if os.path.exists(req_file):
+        if not run_command(["python", "-m", "uv", "pip", "install", "-r", req_file], 
+                         "requirements.txtã‹ã‚‰ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+            sys.exit(1)
+    else:
+        print("       requirements.txt: è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“")
+
+# ã‚¹ãƒ†ãƒƒãƒ—12: è¿½åŠ ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®å°å…¥
+if not extra_packages:
+    print("[12/12] è¿½åŠ ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®å°å…¥ã¯ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã™")
+else:
+    print("[12/12] è¿½åŠ ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã®å°å…¥")
+    packages = extra_packages.split()
+    cmd = ["python", "-m", "uv", "pip", "install"] + packages
+    if not run_command(cmd, "è¿½åŠ ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸ã‚’ã‚¤ãƒ³ã‚¹ãƒˆãƒ¼ãƒ«ä¸­..."):
+        sys.exit(1)
+
+print()
+print("===================================================")
+print("ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—å®Œäº†ã—ã¾ã—ãŸ")
+print("===================================================")
+print(f"ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«: {log_file}")
+print()
+print("===================================================")
+print("ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³èµ·å‹•")
+print("===================================================")
+
+if not repo_url:
+    print(f"ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª: {os.getcwd()}")
+else:
+    print(f"ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª: {repo_name}")
+    os.chdir(os.path.join(current_dir, repo_name))
+
+print(f"ã‚³ãƒãƒ³ãƒ‰: {startup_command}")
+subprocess.run(startup_command, shell=True)
+
+input("ç¶šè¡Œã™ã‚‹ã«ã¯ä½•ã‹ã‚­ãƒ¼ã‚’æŠ¼ã—ã¦ãã ã•ã„...")
