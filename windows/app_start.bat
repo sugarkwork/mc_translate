@@ -10,6 +10,9 @@ REM リポジトリ名、リポジトリURL
 set "REPO_NAME=mc_translate"
 set "REPO_URL=https://github.com/sugarkwork/mc_translate"
 
+REM 自動アップデート（ 0: 無効 / 1: 有効 ）
+set "AUTO_UPDATE=1"
+
 REM requirements.txt 以外の追加パッケージをスペース区切りで指定
 set "EXTRA_PACKAGES="
 
@@ -123,6 +126,7 @@ extra_packages = os.environ.get('EXTRA_PACKAGES', '')
 startup_command = os.environ.get('STARTUP_COMMAND', '')
 pytorch_option = os.environ.get('PYTORCH_OPTION', '1')
 log_file = os.environ.get('LOG_FILE', 'setup_log.txt')
+auto_update = os.environ.get('AUTO_UPDATE', '0')
 
 # ログファイルのパス
 log_path = os.path.join(current_dir, log_file)
@@ -254,6 +258,114 @@ else:
 
 os.chdir(current_dir)
 
+# git class
+import os
+import shutil
+from io import RawIOBase, BytesIO
+
+try:
+    import dulwich
+except ImportError:
+    import importlib
+    importlib.invalidate_caches()
+try:
+    import dulwich
+except ImportError:
+    import sys
+    sys.path.append(os.path.join(python_dir, 'Lib', 'site-packages'))
+try:
+    import dulwich
+except ImportError:
+    print("dulwichパッケージが見つかりません")
+    sys.exit(1)
+
+
+from dulwich import porcelain
+from dulwich.repo import Repo
+from dulwich.client import HttpGitClient
+from dulwich import index
+
+
+class DummyStream(RawIOBase):
+    def __init__(self):
+        super().__init__()
+        self.stream = BytesIO()
+
+    def close(self) -> None:
+        self.stream.close()
+        return None
+
+    def read(self, size=-1) -> None:
+        return None
+
+    def readall(self) -> bytes:
+        return self.stream.getvalue()
+
+    def readinto(self, b) -> None:
+        return None
+
+    def write(self, b) -> int:
+        return self.stream.write(b)
+
+
+class GitManager:
+    def __init__(self, repo_path:str, remote_url:str, branch:str="main"):
+        self.repo_path = repo_path
+        self.remote_url = remote_url if remote_url.endswith('.git') else remote_url + '.git'
+        self.branch = branch
+        self.repo = None
+        if os.path.exists(repo_path):
+            self.repo = Repo(repo_path)
+    
+    def _to_binary(self, text):
+        if isinstance(text, str):
+            return text.encode('utf-8')
+        return text
+
+    def clone(self):
+        if os.path.exists(self.repo_path):
+            print("Repo already exists")
+            return False
+        dummy = DummyStream()
+        porcelain.clone(self.remote_url, target=self.repo_path, errstream=dummy)
+        self.repo = Repo(self.repo_path)
+        return True
+
+    def pull(self):
+        # git pull
+        if not os.path.exists(self.repo_path):
+            return False
+        binary_branch = self._to_binary(self.branch)
+        
+        client = HttpGitClient(self.remote_url)
+        fetch_result = client.fetch(self.remote_url, self.repo)
+        self.repo.refs[b'refs/remotes/origin/' + binary_branch] = fetch_result.refs[b'refs/heads/' + binary_branch]
+
+        head_commit = self.repo[self.repo.head()]
+        index_file = self.repo.index_path()
+        index.build_index_from_tree(
+            self.repo.path,
+            index_file,
+            self.repo.object_store,
+            head_commit.tree
+        )
+        return True
+    
+    def clean(self):
+        # git clean -f
+        if not os.path.exists(self.repo_path):
+            return False
+        
+        status = porcelain.status(self.repo)
+        for untracked in status.untracked:
+            full_path = os.path.join(self.repo_path, untracked)
+            if os.path.isfile(full_path):
+                os.remove(full_path)
+            elif os.path.isdir(full_path):
+                shutil.rmtree(full_path)
+        
+        return True
+
 # ステップ9: PyTorchのインストール
 print("[9/12] PyTorchのインストール")
 if pytorch_option == "1":
@@ -284,10 +396,18 @@ if not repo_url:
     print("[11/12] 依存パッケージのインストールはスキップします")
 else:
     print("[10/12] リポジトリのクローン")
+    
+    git = GitManager(repo_name, repo_url)
     if os.path.exists(os.path.join(current_dir, repo_name)):
         print(f"       {repo_name}: 既に存在します")
+        if auto_update == "1":
+            print("       更新: 自動更新を実行します")
+            if git.pull() is False:
+                sys.exit(1)
+        else:
+            print("       更新: 自動更新は無効です")
     else:
-        if not run_command(["python", "-m", "dulwich", "clone", repo_url], "クローン中..."):
+        if git.clone() is False:
             sys.exit(1)
 
     print("[11/12] 依存パッケージのインストール")
