@@ -1,5 +1,8 @@
 import os
 import gradio as gr
+import sys
+sys.path.append(".")
+
 from translate_mods import get_curseforge_instance, get_microsoft_instance, get_en_mods, main
 from dotenv import load_dotenv
 
