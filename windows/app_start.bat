@@ -11,7 +11,7 @@ set "REPO_NAME=mc_translate"
 set "REPO_URL=https://github.com/sugarkwork/mc_translate"
 
 REM 自動アップデート（ 0: 無効 / 1: 有効 ）
-set "AUTO_UPDATE=1"
+set "AUTO_UPDATE=0"
 
 REM requirements.txt 以外の追加パッケージをスペース区切りで指定
 set "EXTRA_PACKAGES="
@@ -19,16 +19,11 @@ set "EXTRA_PACKAGES="
 REM 起動コマンド
 set "STARTUP_COMMAND=python main.py"
 
-REM Python バージョン（ 3.13.2/3.12.9/3.11.9/3.10.11 ）
+REM Python バージョン（3.10.11/3.11.9/3.12.9/3.13.2）
 set "PYTHON_VERSION=3.11.9"
 
-REM PyTorch バージョンの指定
-REM 1: インストールしない
-REM 2: CPU版をインストール
-REM 3: CUDA 11.8用をインストール
-REM 4: CUDA 12.4用をインストール
-REM 5: CUDA 12.6用をインストール
-set "PYTORCH_OPTION=1"
+REM PyTorch バージョン（none/cpu/cu118/cu124/cu126）
+set "PYTORCH_OPTION=none"
 
 REM ログファイル名
 set "LOG_FILE=setup_log.txt"
@@ -368,27 +363,22 @@ class GitManager:
 
 # ステップ9: PyTorchのインストール
 print("[9/12] PyTorchのインストール")
-if pytorch_option == "1":
+if pytorch_option == "none":
     print("       PyTorch: インストールしません")
-elif pytorch_option == "2":
+elif pytorch_option == "cpu":
     if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio"], 
                      "CPU版PyTorchをインストール中..."):
         sys.exit(1)
-elif pytorch_option == "3":
+elif pytorch_option.startswith("cu"):
+    cuda_version = pytorch_option  # cu118, cu124, cu126 など
     if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
-                      "--index-url", "https://download.pytorch.org/whl/cu118"], 
-                     "CUDA 11.8用PyTorchをインストール中..."):
+                      "--index-url", f"https://download.pytorch.org/whl/{cuda_version}"], 
+                     f"CUDA {cuda_version[2:]}用PyTorchをインストール中..."):
         sys.exit(1)
-elif pytorch_option == "4":
-    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
-                      "--index-url", "https://download.pytorch.org/whl/cu124"], 
-                     "CUDA 12.4用PyTorchをインストール中..."):
-        sys.exit(1)
-elif pytorch_option == "5":
-    if not run_command(["python", "-m", "uv", "pip", "install", "torch", "torchvision", "torchaudio", 
-                      "--index-url", "https://download.pytorch.org/whl/cu126"], 
-                     "CUDA 12.6用PyTorchをインストール中..."):
-        sys.exit(1)
+else:
+    print(f"       エラー: 不明なPyTorchオプション '{pytorch_option}'")
+    sys.exit(1)
+
 
 # ステップ10と11: リポジトリのクローンと依存パッケージのインストール
 if not repo_url:
@@ -439,13 +429,18 @@ print("===================================================")
 print("アプリケーション起動")
 print("===================================================")
 
-if not repo_url:
-    print(f"ディレクトリ: {os.getcwd()}")
-else:
-    print(f"ディレクトリ: {repo_name}")
-    os.chdir(os.path.join(current_dir, repo_name))
+cwd = current_dir
+if repo_url:
+    cwd = os.path.join(current_dir, repo_name)
+
+print(f"ディレクトリ: {cwd}")
+os.chdir(cwd)
+
+new_env = os.environ.copy()
+ppath = new_env.get('PYTHONPATH', '')
+new_env['PYTHONPATH'] = f"{cwd}:{python_dir}:{ppath}:{cwd}:."
 
 print(f"コマンド: {startup_command}")
-subprocess.run(startup_command, shell=True)
+subprocess.run(startup_command.split(), shell=True, cwd=cwd, env=new_env)
 
 input("続行するには何かキーを押してください...")

@@ -8,3 +8,4 @@ __pycache__/
 windows/python/
 windows/setup_log.txt
 windows/mc_translate/
+*batch_id.txt

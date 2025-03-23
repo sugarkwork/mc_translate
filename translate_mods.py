@@ -229,8 +229,8 @@ def create_translation_batch(jar_path, en_data, mod_name):
             "messages": [
                 {
                     "role": "system",
-                    "content": """日本語のリソースパックを作成しています。
-以下の英文のリソースパックを日本語に翻訳して。
+                    "content": """Minecraft の Mod の日本語のリソースパックを作成しています。
+以下の英文のリソースパックを日本語に翻訳してください。
 英文に Java の Format 文字列（%s や %2$s）が含まれる場合、それは翻訳せずに適切な位置に移動してください。
 翻訳したJSON のみ出力してコメントや補足は出力しないでください。"""
                 },
