@@ -73,7 +73,9 @@ def start_translation(instance_path):
         return "インスタンスを選択してください"
     
     try:
-        main(instance_path)
+        result = main(instance_path)
+        if result:
+            return result
         return "翻訳処理を開始しました。処理が完了するまでお待ちください。\n完了後、Minecraftのリソースパックに新しい日本語化パックが追加されます。"
     except Exception as e:
         return f"エラーが発生しました: {str(e)}"

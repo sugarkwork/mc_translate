@@ -419,8 +419,17 @@ def get_en_mods(instance_path, copy_cache=False):
     return en_mods
 
 
+text = ""
+def add_log(log_message):
+    global text
+    text += log_message + "\n"
+    print(log_message)
+
 
 def main(instance_path):
+    global text
+    text = ""
+
     # パスの設定
     mods_path = os.path.join(instance_path, "mods")
     resource_pack_path = os.path.join(instance_path, "resourcepacks")
@@ -443,13 +452,13 @@ def main(instance_path):
     os.makedirs(cache_dir, exist_ok=True)
 
     # MODの言語状態をチェック
-    print("=== MODの言語状態をチェック中 ===")
+    add_log("=== MODの言語状態をチェック中 ===")
     en_mods = get_en_mods(instance_path, copy_cache=True)
 
     
     if not en_mods:
-        print("翻訳が必要なMODは見つかりませんでした")
-        return
+        add_log("翻訳が必要なMODは見つかりませんでした")
+        return text
     
     print(f"\n=== 英語のみのMOD: {len(en_mods)}個 ===")
     for mod in en_mods:
@@ -461,7 +470,7 @@ def main(instance_path):
         batch = client.batches.retrieve(batch_id)
         
         if batch.status == "completed":
-            print("バッチ処理が完了しました")
+            add_log("バッチ処理が完了しました")
             
             # 結果の取得と保存
             file_response = client.files.content(batch.output_file_id)
@@ -477,15 +486,15 @@ def main(instance_path):
             
             # バッチIDの削除
             os.remove(batch_id_file)
-            print("\n=== 処理が完了しました ===")
+            add_log("\n=== 処理が完了しました ===")
             
         elif batch.status in ["failed", "expired"]:
-            print(f"バッチ処理が失敗しました: {batch.status}")
+            add_log(f"バッチ処理が失敗しました: {batch.status}")
             os.remove(batch_id_file)  # 失敗したバッチIDを削除
             
         else:
-            print(f"バッチ処理は現在 {batch.status} 状態です")
-            return
+            add_log(f"バッチ処理は現在 {batch.status} 状態です")
+            return text
     
     # 新しいバッチの作成
     if not batch_id or batch.status in ["failed", "expired"]:
@@ -532,7 +541,7 @@ def main(instance_path):
                     print(f"- {file} の翻訳リクエストを作成しました")
                     
             except Exception as e:
-                print(f"エラー: {file} の処理中にエラーが発生しました: {str(e)}")
+                add_log(f"エラー: {file} の処理中にエラーが発生しました: {str(e)}")
                 continue
         
         if all_requests:
@@ -559,8 +568,8 @@ def main(instance_path):
             with open(batch_id_file, "w") as f:
                 f.write(batch_result.id)
             
-            print(f"\nバッチを作成しました (ID: {batch_result.id})")
-            print("次回の実行時に翻訳結果を確認します")
+            add_log(f"\nバッチを作成しました (ID: {batch_result.id})")
+            add_log("次回の実行時に翻訳結果を確認します")
     
     # all in one resourcepack
     all_in_one_pack_name = f"all_in_one_{modpack_name}_jp.zip"
@@ -596,7 +605,8 @@ def main(instance_path):
             zfout.writestr(lang_file, json.dumps(data, indent=4, ensure_ascii=False))
             
     
-    print(f"all in one リソースパック作成完了: {all_in_one_pack_name} ({all_in_one_count} files)")
+    add_log(f"all in one リソースパック作成完了: {all_in_one_pack_name} ({all_in_one_count} files)")
+    return text
 
 
 def test():
