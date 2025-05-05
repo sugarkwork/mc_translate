@@ -225,7 +225,7 @@ def create_translation_batch(jar_path, en_data, mod_name):
         "method": "POST",
         "url": "/v1/chat/completions",
         "body": {
-            "model": "gpt-4o-mini-2024-07-18",
+            "model": "gpt-4.1-2025-04-14",
             "messages": [
                 {
                     "role": "system",
